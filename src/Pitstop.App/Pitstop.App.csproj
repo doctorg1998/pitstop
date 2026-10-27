@@ -1,0 +1,27 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\Pitstop.Core\Pitstop.Core.csproj" />
+    <ProjectReference Include="..\Pitstop.Windows\Pitstop.Windows.csproj" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <!-- WinForms only: a tray app needs no WPF rendering stack (see BUG-008 for the measured savings). -->
+    <UseWindowsForms>true</UseWindowsForms>
+    <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
+    <AssemblyName>Pitstop</AssemblyName>
+    <ApplicationIcon>pitstop.ico</ApplicationIcon>
+    <Product>Pitstop</Product>
+    <Version>1.0.0</Version>
+    <Authors>Giovanni Sanchez</Authors>
+    <!-- Lower memory for a background tray app: workstation GC, no concurrent background GC thread. -->
+    <ServerGarbageCollection>false</ServerGarbageCollection>
+    <ConcurrentGarbageCollection>false</ConcurrentGarbageCollection>
+    <TieredPGO>true</TieredPGO>
+  </PropertyGroup>
+
+</Project>

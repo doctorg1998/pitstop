@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Pitstop Health Check</title>
+<style>
+:root{--bg:#0b0f14;--panel:#121923;--line:#223042;--text:#d9e2ec;--muted:#8796a8;--ok:#3ddc97;--watch:#ffb547;--action:#ff5d5d;--skip:#6b7a8c;--accent:#4cc9f0}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:15px/1.55 "IBM Plex Sans","Segoe UI",system-ui,sans-serif}
+main{max-width:880px;margin:0 auto;padding:32px 16px 48px}
+h1{font-family:"Chakra Petch","Segoe UI",sans-serif;letter-spacing:.04em;margin:0 0 4px;font-size:28px}
+.meta{color:var(--muted);font-family:"JetBrains Mono",Consolas,monospace;font-size:13px}
+.summary{display:flex;gap:12px;flex-wrap:wrap;margin:20px 0 28px}
+.tile{flex:1 1 120px;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 14px}
+.tile b{display:block;font-family:"Chakra Petch","Segoe UI",sans-serif;font-size:26px}
+.tile span{color:var(--muted);font-size:13px}
+.card{background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--skip);border-radius:10px;padding:14px 16px;margin:0 0 12px}
+.card.ok{border-left-color:var(--ok)}.card.watch{border-left-color:var(--watch)}.card.action{border-left-color:var(--action)}
+.head{display:flex;justify-content:space-between;gap:12px;align-items:baseline}
+.head h2{font-size:16px;margin:0}.pill{font:600 11px "JetBrains Mono",Consolas,monospace;letter-spacing:.08em;padding:2px 8px;border-radius:99px;border:1px solid currentColor}
+.pill.ok{color:var(--ok)}.pill.watch{color:var(--watch)}.pill.action{color:var(--action)}.pill.skip{color:var(--skip)}
+.card p{margin:6px 0 0}.why{color:var(--muted);font-size:14px}.todo b{color:var(--accent);font-weight:600}
+footer{margin-top:28px;color:var(--muted);font-size:12px}
+@media print{
+:root{--bg:#fff;--panel:#fff;--line:#c9d2dc;--text:#111;--muted:#4a5562;--ok:#1a7f4b;--watch:#a35f00;--action:#b42318;--skip:#5b6673;--accent:#0b5c80}
+main{padding:0}.card,.tile{break-inside:avoid}
+}
+</style></head><body><main>
+<h1>PITSTOP // HEALTH CHECK</h1>
+<div class="meta">&lt;pc&gt; · 2026-10-27 10:11 · checked in 4.1 s</div>
+<div class="summary">
+<div class="tile"><b style="color:var(--watch)">WATCH</b><span>Overall</span></div>
+<div class="tile"><b>0</b><span>Need action</span></div>
+<div class="tile"><b>3</b><span>Worth watching</span></div>
+<div class="tile"><b>6</b><span>Healthy</span></div>
+</div>
+<section class="card watch"><div class="head"><h2>Crashes and unexpected shutdowns</h2><span class="pill watch">WATCH</span></div>
+<p>1 in the last 30 days, most recent 2026-10-24 (Unexpected power loss).</p><p class="why">Blue screens and sudden power-offs usually point to a driver, overheating, or a power problem.</p><p class="todo"><b>What to do:</b> If the power went out or you held the power button, you can ignore this. Otherwise check that vents are clear, the power cable is secure, and GPU and chipset drivers are current.</p></section>
+<section class="card watch"><div class="head"><h2>Disk space</h2><span class="pill watch">WATCH</span></div>
+<p>C: 134 GB free of 1023 GB (13%), D: 678 GB free of 2000 GB (34%).</p><p class="why">Windows needs free space for updates, virtual memory and temp files. Under about 10% free, things slow down and updates fail.</p><p class="todo"><b>What to do:</b> Free up space on drive C: by running Disk Cleanup, emptying the Recycle Bin, and uninstalling games or apps you no longer use.</p></section>
+<section class="card watch"><div class="head"><h2>Driver age (graphics, audio, network)</h2><span class="pill watch">WATCH</span></div>
+<p>Older than 2 years: Realtek High Definition Audio (2024-06-25).</p><p class="why">Old drivers are a common cause of crashes, audio dropouts and poor game performance.</p><p class="todo"><b>What to do:</b> Download the latest driver from the device maker&#39;s site (NVIDIA, AMD, Intel, Realtek, or your PC maker).</p></section>
+<section class="card ok"><div class="head"><h2>Windows updates</h2><span class="pill ok">OK</span></div>
+<p>Windows 11 Home 25H2 (build 26200.9711). Last update installed 12 days ago.</p><p class="why">Updates patch security holes and fix bugs. Windows normally installs one every month.</p><p class="todo"><b>What to do:</b> Nothing to do.</p></section>
+<section class="card ok"><div class="head"><h2>Time since restart</h2><span class="pill ok">OK</span></div>
+<p>Running for 3.4 days without a restart.</p><p class="why">Long uptimes let memory leaks build up and keep updates from finishing. Shutting down with Fast Startup on doesn&#39;t count as a restart.</p><p class="todo"><b>What to do:</b> Nothing to do.</p></section>
+<section class="card ok"><div class="head"><h2>Drive health</h2><span class="pill ok">OK</span></div>
+<p>NVMe HP SSD EX950 2TB (SSD): Healthy, NVMe WDC PC SN530 SDBPNPZ-1T00-1006 (SSD): Healthy.</p><p class="why">This is Windows&#39; own verdict on each drive, based on its built-in failure warnings.</p><p class="todo"><b>What to do:</b> Nothing to do.</p></section>
+<section class="card ok"><div class="head"><h2>Memory and processor load</h2><span class="pill ok">OK</span></div>
+<p>Memory 71% used of 32 GB, processor 12% busy during the check.</p><p class="why">This is a snapshot of how busy the PC was during the check. Constantly high numbers make everything feel slow.</p><p class="todo"><b>What to do:</b> Nothing to do.</p></section>
+<section class="card ok"><div class="head"><h2>Startup apps</h2><span class="pill ok">OK</span></div>
+<p>7 apps start with Windows: NVIDIA Broadcast, GoogleChromeAutoLaunch, Medal, SecurityHealth, LG Monitor App Installer, Ollama, Tailscale.</p><p class="why">Every startup app slows boot time and uses memory in the background.</p><p class="todo"><b>What to do:</b> Nothing to do.</p></section>
+<section class="card ok"><div class="head"><h2>Network connection</h2><span class="pill ok">OK</span></div>
+<p>Router 3 ms, 0% loss to router, internet 10 ms, 0% loss to internet, DNS lookup 16 ms.</p><p class="why">Latency is delay, and packet loss is data that never arrives. Loss to your own router points to Wi-Fi or cabling; loss only beyond it points to your internet provider.</p><p class="todo"><b>What to do:</b> Nothing to do.</p></section>
+<section class="card skip"><div class="head"><h2>Temperature</h2><span class="pill skip">SKIPPED</span></div>
+<p>Reading temperatures needs administrator rights, so this check was skipped.</p><p class="why">Pitstop couldn&#39;t check this on this PC.</p><p class="todo"><b>What to do:</b> Optional: to include it, right-click Pitstop and choose Run as administrator.</p></section>
+<section class="card skip"><div class="head"><h2>Battery wear</h2><span class="pill skip">N/A</span></div>
+<p>No battery (desktop PC).</p><p class="why">This check only applies to laptops.</p><p class="todo"><b>What to do:</b> Nothing to do.</p></section>
+<footer>Generated locally by Pitstop. Read-only: nothing on this PC was changed. The only network traffic was the connection test (DNS lookups and pings); no data about this PC was sent anywhere.</footer>
+</main></body></html>

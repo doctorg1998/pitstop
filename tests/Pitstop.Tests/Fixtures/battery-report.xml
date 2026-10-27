@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Synthetic fixture in the `powercfg /batteryreport /xml` format (78% of design capacity). -->
+<BatteryReport xmlns="http://schemas.microsoft.com/battery/2012">
+  <ReportInformation>
+    <ReportVersion>1</ReportVersion>
+    <LocalScanTime>2026-10-27T09:14:02</LocalScanTime>
+  </ReportInformation>
+  <Batteries>
+    <Battery>
+      <Id>DELL 1VX1H</Id>
+      <Manufacturer>SMP</Manufacturer>
+      <Chemistry>LiP</Chemistry>
+      <LongTerm>1</LongTerm>
+      <DesignCapacity>57000</DesignCapacity>
+      <FullChargeCapacity>44460</FullChargeCapacity>
+      <CycleCount>412</CycleCount>
+    </Battery>
+  </Batteries>
+</BatteryReport>
