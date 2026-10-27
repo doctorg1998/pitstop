@@ -97,23 +97,23 @@ public class ParserTests
         Assert.True(merged[0].At < merged[1].At);
     }
 
-    // Device IDs recorded from a real PC (BUG-002).
+    // Device IDs shaped like those recorded on the test PC (BUG-002); vendor/device numbers anonymized.
     [Theory]
-    [InlineData(@"ROOT\MEDIA\0003", true)]                  // Virtual Desktop Audio
-    [InlineData(@"ROOT\STEAMSTREAMINGSPEAKERS\0000", true)]  // Steam Streaming Speakers
-    [InlineData(@"SWD\WINTUN\{37217669-42DA-4657}", true)]   // Tailscale Tunnel
-    [InlineData(@"PCI\VEN_10DE&DEV_2216&SUBSYS_0", false)]   // NVIDIA GeForce RTX 3080
-    [InlineData(@"HDAUDIO\FUNC_01&VEN_10EC&DEV_0", false)]   // Realtek High Definition Audio
-    [InlineData(@"USB\VID_1532&PID_0527", false)]            // USB headset
+    [InlineData(@"ROOT\MEDIA\0003", true)]                  // virtual audio device
+    [InlineData(@"ROOT\VIRTUALSPEAKERS\0000", true)]         // game-streaming virtual speakers
+    [InlineData(@"SWD\WINTUN\{00000000-0000-0000}", true)]   // VPN tunnel adapter
+    [InlineData(@"PCI\VEN_1234&DEV_5678&SUBSYS_0", false)]   // discrete graphics card
+    [InlineData(@"HDAUDIO\FUNC_01&VEN_1234&DEV_0", false)]   // onboard audio
+    [InlineData(@"USB\VID_1234&PID_0001", false)]            // USB headset
     public void IsVirtualDevice_separates_software_devices_from_hardware(string id, bool expected) =>
         Assert.Equal(expected, Parsers.IsVirtualDevice(id));
 
-    // Names recorded from a real PC (BUG-001).
+    // Names shaped like those found on the test PC (BUG-001): a trailing space and a per-install hash.
     [Theory]
-    [InlineData("NVIDIA Broadcast ", "NVIDIA Broadcast")]
-    [InlineData("GoogleChromeAutoLaunch_38791F4ABEA708E49E1BBE279F94BC2B", "GoogleChromeAutoLaunch")]
+    [InlineData("GPU Companion ", "GPU Companion")]
+    [InlineData("BrowserAutoLaunch_0F1E2D3C4B5A69788796A5B4C3D2E1F0", "BrowserAutoLaunch")]
     [InlineData("My_App", "My_App")]
-    [InlineData("Tailscale", "Tailscale")]
+    [InlineData("VPN Client", "VPN Client")]
     public void CleanStartupName_trims_and_drops_hash_suffix(string raw, string expected) =>
         Assert.Equal(expected, Parsers.CleanStartupName(raw));
 

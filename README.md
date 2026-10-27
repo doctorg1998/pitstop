@@ -34,6 +34,10 @@ Open Pitstop from the Start menu, or double-click its tray icon:
 | Health | System |
 |---|---|
 | ![Health page](docs/screenshots/health.png) | ![System page](docs/screenshots/system.png) |
+| **Profiles** | **Settings** |
+| ![Profiles page](docs/screenshots/profiles.png) | ![Settings page](docs/screenshots/settings.png) |
+
+*Screenshots use the dashboard's built-in sample data, so no real PC's devices or apps are shown. The installed app shows your own live readings.*
 
 ---
 
@@ -55,7 +59,7 @@ Eleven checks run in parallel in about 5 seconds. Each result is rated **OK / Wa
 | Temperature | Thermal zone reading (needs Run as administrator; otherwise skipped with that explanation) |
 
 Reports are self-contained HTML (dark theme, light theme when printed) plus JSON. They're **redacted by default**: no PC name or username.
-See a real one: [`docs/sample-health-report.html`](docs/sample-health-report.html).
+See a sample from a real run, with device and app names anonymized: [`docs/sample-health-report.html`](docs/sample-health-report.html).
 
 ## Profiles
 Edit `%LOCALAPPDATA%\Pitstop\config.json` (tray → Profiles → Edit profiles…). Changes apply live, and an invalid edit is rejected while your working profiles stay active.
@@ -66,7 +70,7 @@ Edit `%LOCALAPPDATA%\Pitstop\config.json` (tray → Profiles → Edit profiles�
   "triggers": { "processes": ["obs64.exe"], "hotkey": "Ctrl+Alt+S" },
   "actions": {
     "powerPlan": "High performance",
-    "audioInput": "Scarlett Solo",
+    "audioInput": "USB Microphone",
     "muteNotifications": true,
     "closeApps": ["OneDrive.exe"],
     "breakReminderMinutes": 90

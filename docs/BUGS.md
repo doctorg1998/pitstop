@@ -1,6 +1,6 @@
 # Bug log
 
-These are real defects found while testing Pitstop on a real PC (Windows 11 Home 25H2, build 26200, RTX 3080, two NVMe SSDs, wired Ethernet). They're written up the way a support ticket would be. Each fix has a regression test.
+These are real defects found while testing Pitstop on a real PC (Windows 11 25H2, desktop, discrete GPU, two NVMe SSDs, wired Ethernet). They're written up the way a support ticket would be. Each fix has a regression test. Device and app names from the test PC are anonymized; the IDs, counts and measurements are real.
 
 ---
 
@@ -12,17 +12,17 @@ These are real defects found while testing Pitstop on a real PC (Windows 11 Home
 | **Component** | `WindowsSystemProbe.ReadStartupItems` |
 
 **Steps to reproduce**
-1. Install Google Chrome and NVIDIA Broadcast, with both set to start with Windows.
-2. Run `Pitstop.App.exe --check`.
+1. Install a web browser and a GPU vendor's companion app, with both set to start with Windows.
+2. Run `Pitstop.exe --check`.
 
-**Expected:** "NVIDIA Broadcast, GoogleChromeAutoLaunch"
-**Actual:** "NVIDIA Broadcast , GoogleChromeAutoLaunch_38791F4ABEA708E49E1BBE279F94BC2B"
+**Expected:** "GPU Companion, BrowserAutoLaunch"
+**Actual:** "GPU Companion , BrowserAutoLaunch_0F1E2D3C4B5A69788796A5B4C3D2E1F0" (names anonymized; the shape is real)
 
-**Root cause:** Registry value names are shown exactly as the apps wrote them. NVIDIA's has a trailing space, and Chrome adds a 32-character per-install hash.
+**Root cause:** Registry value names are shown exactly as the apps wrote them. One had a trailing space, and the browser adds a 32-character per-install hash.
 
 **Fix:** Added `Parsers.CleanStartupName`, which trims whitespace and removes a trailing `_` followed by exactly 32 hex characters. Names like `My_App` are left alone.
 
-**Regression test:** `ParserTests.CleanStartupName_trims_and_drops_hash_suffix`, using the real names from this PC.
+**Regression test:** `ParserTests.CleanStartupName_trims_and_drops_hash_suffix`, using names with the same shape as the real ones.
 
 ---
 
@@ -34,11 +34,11 @@ These are real defects found while testing Pitstop on a real PC (Windows 11 Home
 | **Component** | `WindowsSystemProbe.ReadDrivers` |
 
 **Steps to reproduce**
-1. Install Steam, Virtual Desktop or a VPN such as Tailscale.
+1. Install apps that add virtual devices: game streaming, VR streaming, or a VPN client.
 2. Run the Health Check.
 
 **Expected:** Only physical graphics, audio and network hardware is graded.
-**Actual:** 8 "outdated" drivers were flagged. 7 of them were software-only devices, such as Steam Streaming Speakers (2017), Tailscale Tunnel (2021) and PdaNet Broadband Adapter (2017).
+**Actual:** 8 "outdated" drivers were flagged. 7 of them were software-only devices, such as a game-streaming virtual speaker (driver from 2017), a VPN tunnel adapter (2021) and a phone-tethering adapter (2017).
 
 **Root cause:** `Win32_PnPSignedDriver` lists virtual devices in the same DISPLAY, MEDIA and NET classes as real hardware. Their driver dates don't reflect anything the user needs to update.
 
@@ -46,9 +46,9 @@ These are real defects found while testing Pitstop on a real PC (Windows 11 Home
 
 **Fix:** Added `Parsers.IsVirtualDevice`, and the probe now skips those devices.
 
-**Result:** 1 real finding: Realtek High Definition Audio, driver dated 2024-06-25.
+**Result:** 1 real finding remained: the onboard audio driver, more than 2 years old.
 
-**Regression test:** `ParserTests.IsVirtualDevice_separates_software_devices_from_hardware`, using device IDs recorded from this PC.
+**Regression test:** `ParserTests.IsVirtualDevice_separates_software_devices_from_hardware`, using device IDs with the same structure as the ones recorded on the test PC.
 
 ---
 

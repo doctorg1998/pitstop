@@ -34,8 +34,8 @@
 | | |
 |---|---|
 | OS | Windows 11 Home 25H2 (build 26200), standard user (not elevated) |
-| Hardware | Desktop, 20 logical cores, 32 GB RAM, RTX 3080, 2× NVMe SSD |
-| Audio devices | Fosi Audio K5 Pro, Focusrite Scarlett Solo, Realtek, plus 5 virtual devices |
+| Hardware | Desktop, 20 logical cores, 32 GB RAM, discrete GPU, 2× NVMe SSD |
+| Audio devices | USB headphone amp, USB audio interface, onboard audio, plus 5 virtual devices |
 | Network | Wired Ethernet |
 | Build | .NET 8.0.427 SDK, Release; installer built with Inno Setup 6.7 |
 
@@ -44,8 +44,8 @@
 |---|---|---|---|
 | L1 | Headless Health Check, run 5 times back to back | Stable verdict, under 10 s | ✅ Watch every time, 5.1 s |
 | L2 | Report redaction | No PC name or username in the HTML | ✅ 0 occurrences |
-| L3 | Trigger app starts (Notepad, QA profile) | Power plan, audio output and closing an app all applied within the poll interval | ✅ Balanced, Realtek, Character Map closed, about 2 s |
-| L4 | Trigger app exits | Everything reverted in reverse order; closed app relaunched | ✅ High performance, Fosi K5 Pro, Character Map reopened |
+| L3 | Trigger app starts (Notepad, QA profile) | Power plan, audio output and closing an app all applied within the poll interval | ✅ Balanced, secondary audio output, test app closed, about 2 s |
+| L4 | Trigger app exits | Everything reverted in reverse order; closed app relaunched | ✅ High performance, primary headphones, test app reopened |
 | L5 | Pitstop force-killed while a profile is active | On restart, the revert journal restores the settings | ✅ Plan and audio restored, journal cleared |
 | L6 | Break reminder at 1 min | Fires within 10 s of being due | ✅ Fired at 65 s |
 | L7 | Valid config edit while running | Reloaded live; next activation uses the new settings | ✅ "Power saver" applied |

@@ -86,7 +86,7 @@ Core never references Windows APIs directly, so everything in it is testable wit
   "profiles": [
     {
       "id": "play", "name": "Play", "priority": 20,
-      "triggers": { "processes": ["eldenring.exe", "cs2.exe"], "hotkey": "Ctrl+Alt+P" },
+      "triggers": { "processes": ["MyGame.exe"], "hotkey": "Ctrl+Alt+P" },
       "actions": {
         "powerPlan": "High performance",
         "audioOutput": "Headset", "audioInput": null,

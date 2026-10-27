@@ -502,7 +502,7 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
     const s = setup(canvas); if (!s) return;
     const all = lines.flatMap((l) => l.data.filter((v) => v != null));
     const max = opt.max ?? niceMax(Math.max(opt.minMax ?? 1, ...all));
-    const yLabel = (v) => (opt.fmt ? opt.fmt(v) : String(Math.round(v)));
+    const yLabel = (v) => (opt.fmt ? opt.fmt(v, max) : String(Math.round(v)));
     const { ctx, w, h } = s, padR = 8, padT = 10, padB = opt.xLabels ? 26 : 10;
     const padL = Math.ceil(Math.max(...[0, 1, 2, 3, 4].map((g) => ctx.measureText(yLabel((max / 4) * g)).width))) + 14;
     const cw = w - padL - padR, chh = h - padT - padB, n = opt.points ?? Math.max(...lines.map((l) => l.data.length), 2);
@@ -574,7 +574,8 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
     if (page === "page-system") {
       lineChart($("ch-cpu"), [{ data: series.cpu, color: css("--accent"), fill: true }], { max: 100, fmt: pctFmt, points: MAX_POINTS });
       lineChart($("ch-mem"), [{ data: series.mem, color: "#b18cff", fill: true }], { max: 100, fmt: pctFmt, points: MAX_POINTS });
-      lineChart($("ch-net"), [{ data: series.down, color: css("--accent"), fill: true }, { data: series.up, color: css("--ok") }], { fmt: (v) => (v === 0 ? "0" : v >= 1024 ? +(v / 1024).toFixed(1) + " MB/s" : Math.round(v) + " KB/s"), points: MAX_POINTS, minMax: 20 });
+      lineChart($("ch-net"), [{ data: series.down, color: css("--accent"), fill: true }, { data: series.up, color: css("--ok") }], // One unit per axis: once the scale reaches 1000 KB/s every label switches to MB/s.
+        { fmt: (v, max) => (v === 0 ? "0" : max >= 1000 ? +(v / 1024).toFixed(1) + " MB/s" : Math.round(v) + " KB/s"), points: MAX_POINTS, minMax: 20 });
     }
     if (!state) return;
     if (page === "page-health") {
@@ -612,28 +613,29 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
       else if (msg.type !== "ready") toast("Demo mode: “" + msg.type + "” works in the app.");
     },
     start() {
-      document.body.insertAdjacentHTML("beforeend", '<div class="demo-banner">Demo data · open Pitstop to see your PC</div>');
+      document.body.insertAdjacentHTML("beforeend", '<div class="demo-banner">Interactive demo · sample data · the installed app reads your real PC</div>');
       const now = Date.now(), iso = (msAgo) => new Date(now - msAgo).toISOString(), H = 3600e3, D = 24 * H;
       const F = (id, title, severity, summary, whatItMeans, whatToDo) => ({ checkId: id, title, severity, summary, whatItMeans, whatToDo });
       receive({
         type: "state", version: "1.1.0", autostart: false, includeMachineName: false, activeProfileId: null, manualProfileId: null, checkRunning: false,
         memTotalGb: 32, uptimeSec: 3.4 * 86400,
-        drives: [{ name: "C:", label: "Windows", totalGb: 1023, freeGb: 134 }, { name: "D:", label: "Games", totalGb: 2000, freeGb: 678 }],
+        // Sample data only: generic devices and apps, nothing from a real PC.
+        drives: [{ name: "C:", label: "Windows", totalGb: 476, freeGb: 61 }, { name: "D:", label: "Data", totalGb: 931, freeGb: 402 }],
         profiles: [
           { id: "work", name: "Work", priority: 10, hotkey: "Ctrl+Alt+W", processes: ["ms-teams.exe", "EXCEL.EXE", "WINWORD.EXE"], actions: { powerPlan: "Balanced", audioOutput: null, audioInput: null, muteNotifications: false, closeApps: [], launchApps: [], breakReminderMinutes: 60 } },
-          { id: "play", name: "Play", priority: 20, hotkey: "Ctrl+Alt+P", processes: ["cs2.exe", "eldenring.exe"], actions: { powerPlan: "High performance", audioOutput: "Fosi", audioInput: null, muteNotifications: true, closeApps: ["OneDrive.exe"], launchApps: [], breakReminderMinutes: 90 } },
-          { id: "stream", name: "Stream / Record", priority: 30, hotkey: "Ctrl+Alt+S", processes: ["obs64.exe"], actions: { powerPlan: "High performance", audioOutput: null, audioInput: "Scarlett Solo", muteNotifications: true, closeApps: [], launchApps: [], breakReminderMinutes: null } },
+          { id: "play", name: "Play", priority: 20, hotkey: "Ctrl+Alt+P", processes: ["MyGame.exe"], actions: { powerPlan: "High performance", audioOutput: "Headset", audioInput: null, muteNotifications: true, closeApps: ["OneDrive.exe"], launchApps: [], breakReminderMinutes: 90 } },
+          { id: "stream", name: "Stream / Record", priority: 30, hotkey: "Ctrl+Alt+S", processes: ["obs64.exe"], actions: { powerPlan: "High performance", audioOutput: null, audioInput: "USB Microphone", muteNotifications: true, closeApps: [], launchApps: [], breakReminderMinutes: null } },
         ],
         report: { takenAt: iso(40 * 60e3), score: 82, grade: "Good", findings: [
-          F("H3", "Crashes and unexpected shutdowns", "Watch", "1 in the last 30 days, most recent 2026-10-24 (Unexpected power loss).", "Blue screens and sudden power-offs usually point to a driver, overheating, or a power problem.", "If the power went out or you held the power button, you can ignore this. Otherwise check that vents are clear, the power cable is secure, and GPU and chipset drivers are current."),
-          F("H4", "Disk space", "Watch", "C: 134 GB free of 1023 GB (13%), D: 678 GB free of 2000 GB (34%).", "Windows needs free space for updates, virtual memory and temp files.", "Free up space on drive C: by running Disk Cleanup, emptying the Recycle Bin, and uninstalling games or apps you no longer use."),
-          F("H8", "Driver age (graphics, audio, network)", "Watch", "Older than 2 years: Realtek High Definition Audio (2024-06-25).", "Old drivers are a common cause of crashes, audio dropouts and poor game performance.", "Download the latest driver from the device maker's site."),
-          F("H1", "Windows updates", "Ok", "Windows 11 Home 25H2 (build 26200.9711). Last update installed 12 days ago.", "Updates patch security holes and fix bugs.", "Nothing to do."),
+          F("H3", "Crashes and unexpected shutdowns", "Watch", "1 in the last 30 days, most recent 2026-10-21 (Unexpected power loss).", "Blue screens and sudden power-offs usually point to a driver, overheating, or a power problem.", "If the power went out or you held the power button, you can ignore this. Otherwise check that vents are clear, the power cable is secure, and GPU and chipset drivers are current."),
+          F("H4", "Disk space", "Watch", "C: 61 GB free of 476 GB (13%), D: 402 GB free of 931 GB (43%).", "Windows needs free space for updates, virtual memory and temp files.", "Free up space on drive C: by running Disk Cleanup, emptying the Recycle Bin, and uninstalling games or apps you no longer use."),
+          F("H8", "Driver age (graphics, audio, network)", "Watch", "Older than 2 years: Onboard audio driver (2023-09-14).", "Old drivers are a common cause of crashes, audio dropouts and poor game performance.", "Download the latest driver from the device maker's site."),
+          F("H1", "Windows updates", "Ok", "Windows 11 25H2. Last update installed 9 days ago.", "Updates patch security holes and fix bugs.", "Nothing to do."),
           F("H2", "Time since restart", "Ok", "Running for 3.4 days without a restart.", "Long uptimes let memory leaks build up.", "Nothing to do."),
-          F("H5", "Drive health", "Ok", "NVMe HP SSD EX950 2TB (SSD): Healthy, NVMe WDC PC SN530 (SSD): Healthy.", "This is Windows' own verdict on each drive.", "Nothing to do."),
-          F("H6", "Memory and processor load", "Ok", "Memory 71% used of 32 GB, processor 12% busy during the check.", "A snapshot of how busy the PC was.", "Nothing to do."),
+          F("H5", "Drive health", "Ok", "System SSD (NVMe): Healthy, Data SSD (NVMe): Healthy.", "This is Windows' own verdict on each drive.", "Nothing to do."),
+          F("H6", "Memory and processor load", "Ok", "Memory 64% used of 32 GB, processor 9% busy during the check.", "A snapshot of how busy the PC was.", "Nothing to do."),
           F("H7", "Startup apps", "Ok", "7 apps start with Windows.", "Every startup app slows boot time.", "Nothing to do."),
-          F("H9", "Network connection", "Ok", "Router 3 ms, 0% loss to router, internet 10 ms, 0% loss to internet, DNS lookup 16 ms.", "Latency is delay; packet loss is data that never arrives.", "Nothing to do."),
+          F("H9", "Network connection", "Ok", "Router 2 ms, 0% loss to router, internet 12 ms, 0% loss to internet, DNS lookup 14 ms.", "Latency is delay; packet loss is data that never arrives.", "Nothing to do."),
           F("H10", "Battery wear", "NotApplicable", "No battery (desktop PC).", "This check only applies to laptops.", "Nothing to do."),
           F("H11", "Temperature", "Skipped", "Reading temperatures needs administrator rights, so this check was skipped.", "Pitstop couldn't check this on this PC.", "Optional: to include it, right-click Pitstop and choose Run as administrator."),
         ] },
@@ -655,6 +657,9 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
   };
 
   if (host) send({ type: "ready" }); else Demo.start();
+  // Deep link to a page, e.g. dashboard.html#system (used by the portfolio demo).
+  const startPage = location.hash.slice(1);
+  if (["overview", "health", "profiles", "system", "settings"].includes(startPage)) go(startPage);
 })();
 </script>
 </body>

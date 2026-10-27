@@ -44,7 +44,7 @@ I treated QA as a feature, not a final step.
 
 ## Three bugs that taught me something
 - **The connection was fine; the measurement wasn't (BUG-004).** Pitstop reported 20–25% packet loss on a wired connection with 0% loss to the router. I isolated the variable by pinging two providers at four different intervals. Loss was 4 in 20 at 100 ms spacing and 0 at 250 ms. Public DNS servers throttle bursts of pings. The fix changed how Pitstop measures, not the threshold.
-- **False alarms are bugs too (BUG-002).** The driver check flagged 8 "outdated" drivers. Seven belonged to virtual devices (Steam Streaming Speakers, a VPN tunnel). Comparing device IDs showed that software devices are enumerated under `ROOT\` and `SWD\`, while real hardware sits on PCI, HDAUDIO or USB. One real finding remained.
+- **False alarms are bugs too (BUG-002).** The driver check flagged 8 "outdated" drivers. Seven belonged to virtual devices (game-streaming speakers, a VPN tunnel). Comparing device IDs showed that software devices are enumerated under `ROOT\` and `SWD\`, while real hardware sits on PCI, HDAUDIO or USB. One real finding remained.
 - **Measure before optimizing (BUG-008 and BUG-010).** The tray app used 72 MB of private memory. The cause was a second UI framework that a windowless app didn't need. Removing it cut private memory to 14 MB (−80%). Removing it from the package cut the installer from 49 MB to 33 MB.
 
 ## Results
