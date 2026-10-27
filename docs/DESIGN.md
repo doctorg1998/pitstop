@@ -43,14 +43,21 @@ Local HTML covering:
 - health trend: the last 4 checks
 - open Action items
 
-## 2. Deviations from the original prompt (need your OK)
+## 2. Deviations from the original prompt (all approved; 5–7 were added during the build)
 1. **Process detection.** `Win32_ProcessStartTrace` requires admin. The plan is to diff `Process.GetProcesses()` every 2 s (measured cost is well under 1% CPU), behind an `IProcessWatcher` interface so an event-driven version can replace it later.
 2. **Do Not Disturb.** Windows 11 has no supported API for Focus/DND. The plan is to toggle per-user toast notifications instead: same effect, fully documented and revertible.
 3. **SMART.** Raw SMART data needs admin. The plan is to use Windows' own disk health verdict (`MSFT_PhysicalDisk`), which works without admin.
 4. **Temperatures.** These are reported as skipped unless Pitstop is run elevated. No third-party kernel driver will be used.
-
 5. **WinForms instead of WPF for the tray app** (decided in Phase 2 after measuring, BUG-008). Pitstop has no main window, so WPF's rendering stack was pure overhead. Moving to WinForms cut private memory from 72 MB to 14 MB. All logic lives in Core and is UI-agnostic, so this changed no tests.
-6. **Break reminders use a corner popup, not a Windows notification.** Profiles like Play mute notifications, which would silently swallow the reminder. The popup never takes focus.
+6. **v1.1 dashboard window in WebView2** (HTML/CSS with hand-drawn canvas charts, no libraries).
+   - **Why:** WinForms can't produce a modern, readable dashboard with charts without heavy custom drawing. WebView2 ships with Windows 11 and matches the Nexus stack.
+   - **Lifetime:** the window, its WebView2 processes and the 1-second metrics sampler exist only while it's open. Closing it releases them, and the tray stays light.
+   - **Lockdown:**
+     - The page is embedded in the exe and served only to its own private origin (`https://app.pitstop`).
+     - Every other navigation is cancelled, along with any new window.
+     - Dev tools, context menus, zoom and browser shortcuts are off.
+     - Every message from the page passes `DashboardCommandParser`: a type allowlist, a 4 KB cap, a profile-id pattern, and an HTTPS link allowlist.
+7. **Break reminders use a corner popup, not a Windows notification.** Profiles like Play mute notifications, which would silently swallow the reminder. The popup never takes focus.
 
 ## 3. Solution layout
 ```
@@ -118,7 +125,9 @@ Config is validated on load. If it's invalid, Pitstop backs up the bad file, loa
 | Idle CPU (tray app, 60 s) | under 1% | **0.026–0.104% of one core** (dev build / installed release build) |
 | Private memory (idle) | under 80 MB | **14.3–18.2 MB** |
 | Working set (idle) | under 80 MB | **56.3–62.2 MB** |
-| Installer / portable zip | — | 33.0 MB / 42.6 MB, self-contained (BUG-010) |
+| Installer / portable zip | — | 33.0 MB / 42.6 MB, self-contained (BUG-010); v1.1 with dashboard: 33.3 MB / 43.1 MB |
+| v1.1 dashboard open | — | 6 WebView2 processes, about 297 MB private in total (typical for Edge WebView2) |
+| v1.1 dashboard closed | under 80 MB | WebView2 processes 0; tray 20.6 MB private, 0.05% CPU |
 | Process-watcher poll (245 processes) | — | 12–14 ms wall time, mostly waiting; under 1 ms CPU per poll |
 | Profile switch latency after the app starts or exits | — | about 2 s (the poll interval) |
 | Automated tests | — | 141 / 141 passing; Pitstop.Core coverage 97.3% lines, 88.4% branches |
@@ -128,6 +137,7 @@ Config is validated on load. If it's invalid, Pitstop backs up the bad file, loa
 - **App closing is polite.** An app that ignores WM_CLOSE (some tray apps) is reported as "left running", never force-killed.
 - **The notification mute couldn't be verified on the development PC,** because toasts were already off there (ToastEnabled = 0), so the action was a correct no-op. It's on the manual QA checklist.
 - **The audio switch uses `IPolicyConfig`,** an undocumented interface (the same one the Sound control panel uses). It's verified on Windows 11 25H2, and the code is isolated behind `IAudioDevices`.
+- **The dashboard needs the WebView2 Runtime.** Every Windows 11 PC has it. If it's missing, Pitstop says so and keeps working from the tray.
 - **PID reuse within one 2 s poll window could hide a restart.** In practice this needs an exit and a new start that reuses the same PID inside 2 s.
 
 ## 10. Environment notes

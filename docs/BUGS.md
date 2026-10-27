@@ -241,6 +241,35 @@ Core and Windows code were unchanged, and so were all 125 tests.
 | Portable zip | 67.4 MB | **42.6 MB** |
 | Files shipped | 8 | **2** |
 
+---
+
+## BUG-011: Dashboard content could stay invisible
+| | |
+|---|---|
+| **Found** | 2026-10-27, v1.1 dashboard, first preview |
+| **Severity** | High (a blank window is the worst first impression) |
+| **Component** | `dashboard.html` page transition |
+
+**Observed:** The main content area rendered almost black for several seconds while the sidebar looked normal. Screenshots taken a few seconds apart showed it either way.
+
+**Root cause:** Each page faded in from `opacity: 0`. In a background or hidden page, the browser pauses animations, so the content stayed at the animation's first frame, which was invisible. A dashboard window that opens behind other windows could hit the same thing.
+
+**Fix:** The page transition now moves content but never hides it. A CSS comment records the rule: movement only, never opacity.
+
+**Verified:** The real app window renders immediately (screenshots taken through the app's own WebView2).
+
+---
+
+## BUG-012 to BUG-015: Chart readability (dashboard review)
+Found while reviewing every dashboard page at the real window size (1320 × 860), first in demo mode and then in the real app.
+
+| # | Problem | Fix |
+|---|---|---|
+| 012 | The last date label on the score-history chart was cut off ("Oct 2") | First and last x-axis labels now align inward |
+| 013 | The "time per profile" value text overlapped the end of the bar | The label and value columns are measured from the actual text instead of fixed at 120 px |
+| 014 | The network axis read "2.4M / 625K", with no units and odd steps such as "13 KB/s / 38 KB/s" | Units added ("40 KB/s", "2 MB/s"); gridlines use 1-2-5 steps; the network axis has a minimum scale of 0–20 KB/s so tiny values don't produce fractional ticks |
+| 015 | A session of a few seconds showed as "0 min", and two checks on one day both read "Oct 27" | Durations under a minute read "under 1 min"; same-day checks are labeled with their time |
+
 **Regression tests:**
 - `HealthRuleTests.Disk_space_shows_percent_and_has_no_double_colon`
 - `Network_summary_starts_with_capital`

@@ -61,9 +61,51 @@ jobs:
           & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" installer\pitstop.iss
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+      - name: Checksums
+        shell: pwsh
+        run: |
+          Get-ChildItem dist -File | ForEach-Object { "$((Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower())  $($_.Name)" } |
+            Set-Content dist/SHA256SUMS.txt -Encoding ascii
+          Get-Content dist/SHA256SUMS.txt
+
       - uses: actions/upload-artifact@v4
         with:
           name: pitstop-${{ github.sha }}
           path: |
             dist/*
             coverage/**/*.trx
+
+  # Pushing a tag like v1.0.0 publishes the tested installer, portable zip and checksums as a GitHub Release.
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build-test-package
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: pitstop-${{ github.sha }}
+          path: artifact
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cat > notes.md <<'EOF'
+          Windows 11 tray app: one-click PC **Health Check** plus auto-switching **Profiles** (power plan, audio devices, notifications, apps).
+
+          **Download**
+          - `Pitstop-Setup-*.exe`: per-user installer, no admin prompt, self-contained (no .NET install needed)
+          - `Pitstop-portable-win-x64.zip`: unzip and run `Pitstop.exe`
+          - `SHA256SUMS.txt`: checksums for both
+
+          The installer isn't code-signed yet, so Windows SmartScreen may show "Windows protected your PC". Choose **More info**, then **Run anyway**.
+
+          Built and tested by CI from this tag (see the run summary for test results and coverage).
+          See the [README](https://github.com/doctorg1998/pitstop#readme), [case study](https://github.com/doctorg1998/pitstop/blob/main/docs/CASE-STUDY.md) and [bug log](https://github.com/doctorg1998/pitstop/blob/main/docs/BUGS.md).
+          EOF
+          gh release create "${{ github.ref_name }}" artifact/dist/* \
+            --repo "${{ github.repository }}" \
+            --title "Pitstop ${{ github.ref_name }}" \
+            --notes-file notes.md

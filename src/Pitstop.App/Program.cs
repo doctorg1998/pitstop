@@ -24,12 +24,12 @@ internal static class Program
 
         ApplicationConfiguration.Initialize();
 
-        // Tray mode: one instance per user session.
+        // One instance per user session. Launching Pitstop again just brings up the running instance's window.
+        using var showRequests = new EventWaitHandle(false, EventResetMode.AutoReset, @"Local\Pitstop.Show");
         using var singleInstance = new Mutex(initiallyOwned: true, @"Local\Pitstop.Tray", out var isFirst);
         if (!isFirst)
         {
-            MessageBox.Show("Pitstop is already running. Look for its icon in the system tray (you may need to click ^).",
-                "Pitstop", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            showRequests.Set();
             return 0;
         }
 
@@ -41,7 +41,8 @@ internal static class Program
         using var host = new TrayHost();
         // Revert profile changes before Windows signs out or shuts down.
         Microsoft.Win32.SystemEvents.SessionEnding += (_, _) => host.Dispose();
-        host.Start();
+        // `--tray` (used by Start with Windows) starts quietly; any other launch opens the dashboard.
+        host.Start(showDashboard: !args.Any(a => a.Equals("--tray", StringComparison.OrdinalIgnoreCase)), showRequests);
         Application.Run();
         return 0;
     }

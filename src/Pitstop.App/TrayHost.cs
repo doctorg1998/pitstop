@@ -3,6 +3,7 @@ using System.Drawing.Drawing2D;
 using System.Runtime.InteropServices;
 using Microsoft.Win32;
 using Pitstop.Core.Config;
+using Pitstop.Core.Dashboard;
 using Pitstop.Core.Digest;
 using Pitstop.Core.Health;
 using Pitstop.Core.Profiles;
@@ -33,9 +34,13 @@ internal sealed class TrayHost : IDisposable
     private readonly System.Windows.Forms.Timer _tick = new() { Interval = 10_000 };
     private readonly System.Windows.Forms.Timer _reloadDebounce = new() { Interval = 600 };
     private PitstopConfig _config = new();
+    private DashboardForm? _dashboard;
+    private RegisteredWaitHandle? _showListener;
     private bool _healthCheckRunning, _disposed;
 
-    public void Start()
+    /// <param name="showDashboard">False when started with Windows (stay quietly in the tray).</param>
+    /// <param name="showRequests">Signalled when the user launches Pitstop again while it's already running.</param>
+    public void Start(bool showDashboard, EventWaitHandle showRequests)
     {
         _ui.CreateControl();
         Directory.CreateDirectory(Program.DataFolder);
@@ -70,6 +75,7 @@ internal sealed class TrayHost : IDisposable
         // 4. Tray icon.
         _tray = new NotifyIcon { Icon = _idleIcon, Text = "Pitstop: no profile active", Visible = true, ContextMenuStrip = new ContextMenuStrip() };
         _tray.ContextMenuStrip.Opening += (_, _) => BuildMenu(_tray.ContextMenuStrip);
+        _tray.DoubleClick += (_, _) => OpenDashboard();
         BuildMenu(_tray.ContextMenuStrip);
 
         // 5. Hotkeys.
@@ -99,6 +105,123 @@ internal sealed class TrayHost : IDisposable
 
         foreach (var w in startupWarnings) Log("Warning: " + w);
         if (startupWarnings.Count > 0) Balloon("Pitstop started with warnings", string.Join("\n", startupWarnings), ToolTipIcon.Warning);
+
+        // 8. A second launch (Start menu, desktop shortcut) asks this instance to show its window.
+        _showListener = ThreadPool.RegisterWaitForSingleObject(showRequests, (_, _) => OnUi(OpenDashboard), null, Timeout.Infinite, executeOnlyOnce: false);
+        if (showDashboard) OpenDashboard();
+    }
+
+    private void OpenDashboard()
+    {
+        if (_disposed) return;
+        if (_dashboard is null || _dashboard.IsDisposed)
+        {
+            _dashboard = new DashboardForm(BuildDashboardState, HandleDashboardCommand);
+            _dashboard.FormClosed += (_, _) => { _dashboard?.Dispose(); _dashboard = null; };
+        }
+        _dashboard.Reveal();
+    }
+
+    private void PushDashboard()
+    {
+        if (_dashboard is { IsDisposed: false } d) d.PushState();
+    }
+
+    private void HandleDashboardCommand(DashboardCommand cmd)
+    {
+        switch (cmd.Type)
+        {
+            case "runCheck":
+                _ = RunHealthCheckAsync(openReport: false);
+                break;
+            case "toggleProfile":
+                if (_config.Profiles.Any(p => p.Id.Equals(cmd.ProfileId, StringComparison.OrdinalIgnoreCase)))
+                    _engine.ToggleManual(cmd.ProfileId!);
+                break;
+            case "setAutostart":
+                SetAutostart(cmd.On == true);
+                PushDashboard();
+                break;
+            case "setIncludeMachineName":
+                _config.Privacy.IncludeMachineNameInReports = cmd.On == true;
+                new ConfigLoader(_files).Save(ConfigPath, _config); // the config watcher reloads and pushes state
+                break;
+            case "openReport":
+                if (LatestReportFile(".html") is { } html) Open(html, null);
+                else _dashboard?.Toast("No report yet. Run a Health Check first.", "warn");
+                break;
+            case "openConfig":
+                Open("notepad.exe", ConfigPath);
+                break;
+            case "openFolder":
+                Open("explorer.exe", Program.DataFolder);
+                break;
+            case "openUrl":
+                Open(cmd.Url!, null); // already checked against the link allowlist
+                break;
+        }
+    }
+
+    private static string? LatestReportFile(string extension)
+    {
+        var dir = DataPath("reports");
+        return Directory.Exists(dir)
+            ? Directory.EnumerateFiles(dir, "pitstop-health-*" + extension).OrderByDescending(f => f, StringComparer.Ordinal).FirstOrDefault()
+            : null;
+    }
+
+    /// <summary>Everything the dashboard shows, as one JSON-ready snapshot.</summary>
+    private object BuildDashboardState()
+    {
+        var now = DateTimeOffset.Now;
+        var reportsDir = DataPath("reports");
+        var reportFiles = Directory.Exists(reportsDir)
+            ? Directory.EnumerateFiles(reportsDir, "pitstop-health-*.json").OrderBy(f => f, StringComparer.Ordinal).ToList()
+            : new List<string>();
+        var summaries = reportFiles.Select(f => DigestBuilder.ReadReport(File.ReadAllText(f))).OfType<HealthSummary>().ToList();
+
+        object? report = null;
+        if (reportFiles.Count > 0 && ReportWriter.FromJson(File.ReadAllText(reportFiles[^1])) is { } latest)
+        {
+            var score = HealthScore.Compute(latest.Findings);
+            report = new
+            {
+                takenAt = latest.TakenAt,
+                score,
+                grade = HealthScore.Grade(score),
+                findings = latest.Findings.Select(f => new { f.CheckId, f.Title, severity = f.Severity.ToString(), f.Summary, f.WhatItMeans, f.WhatToDo }),
+            };
+        }
+
+        var sessions = new SessionLog(_files, DataPath("sessions.jsonl")).ReadAll();
+        var digest = DigestBuilder.Build(sessions, summaries, now);
+        var active = _engine.Active;
+
+        return new
+        {
+            type = "state",
+            version = Application.ProductVersion.Split('+')[0],
+            autostart = IsAutostartEnabled(),
+            includeMachineName = _config.Privacy.IncludeMachineNameInReports,
+            activeProfileId = active?.Id,
+            manualProfileId = _engine.ManualProfileId,
+            checkRunning = _healthCheckRunning,
+            memTotalGb = MetricsSampler.TotalMemoryGb(),
+            uptimeSec = Environment.TickCount64 / 1000,
+            drives = MetricsSampler.Drives().Select(d => new { d.Name, d.Label, totalGb = d.TotalBytes / 1e9, freeGb = d.FreeBytes / 1e9 }),
+            profiles = _config.Profiles.Select(p => new
+            {
+                p.Id, p.Name, p.Priority,
+                hotkey = Hotkey.TryParse(p.Triggers.Hotkey, out var hk) ? hk!.Text : null,
+                processes = p.Triggers.Processes,
+                actions = p.Actions,
+            }),
+            report,
+            history = summaries.TakeLast(10).Select(s => new { s.TakenAt, score = HealthScore.FromCounts(s.Action, s.Watch), s.Action, s.Watch }),
+            week = digest.TimePerProfile.Select(p => new { name = p.ProfileName, minutes = Math.Round(p.Time.TotalMinutes, 1), p.Sessions }),
+            sessions = sessions.OrderByDescending(s => s.Start).Take(6)
+                .Select(s => new { name = s.ProfileName, start = s.Start, minutes = Math.Round(s.Duration.TotalMinutes, 1), trigger = s.Trigger }),
+        };
     }
 
     private void OnUi(Action action)
@@ -134,6 +257,7 @@ internal sealed class TrayHost : IDisposable
         _engine.UpdateProfiles(_config.Profiles);
         var warnings = RegisterHotkeys().ToList();
         Log($"Config reloaded ({_config.Profiles.Count} profiles).");
+        PushDashboard();
         Balloon("Profiles updated", warnings.Count == 0 ? $"{_config.Profiles.Count} profiles loaded." : string.Join("\n", warnings),
             warnings.Count == 0 ? ToolTipIcon.Info : ToolTipIcon.Warning);
     }
@@ -148,6 +272,13 @@ internal sealed class TrayHost : IDisposable
         var what = current is null ? $"{change.Previous?.Name ?? "Profile"} off" : $"{current.Name} on";
         Log($"{what} ({change.Trigger}).");
         foreach (var w in change.Warnings) Log("  Warning: " + w);
+        PushDashboard();
+        if (_dashboard is { IsDisposed: false } d)
+        {
+            var friendly = current is null ? $"{change.Previous?.Name} profile turned off." : $"{current.Name} profile turned on.";
+            d.Toast(change.Warnings.Count > 0 ? $"{friendly} Some settings couldn't be changed: {string.Join(" ", change.Warnings)}" : friendly,
+                change.Warnings.Count > 0 ? "warn" : "");
+        }
 
         if (!ReferenceEquals(change.Previous, change.Current) || change.Warnings.Count > 0)
             Balloon(what, change.Warnings.Count > 0 ? string.Join("\n", change.Warnings) : $"Triggered by {change.Trigger}.",
@@ -163,11 +294,14 @@ internal sealed class TrayHost : IDisposable
         var active = _engine.Active;
         var manual = _engine.ManualProfileId;
 
+        var open = new ToolStripMenuItem("Open Pitstop") { Font = new Font(menu.Font, FontStyle.Bold) };
+        open.Click += (_, _) => OpenDashboard();
+        menu.Items.Add(open);
         menu.Items.Add(new ToolStripMenuItem(active is null ? "No profile active" : $"Active: {active.Name}{(manual is null ? "" : " (manual)")}") { Enabled = false });
         menu.Items.Add(new ToolStripSeparator());
 
         var check = new ToolStripMenuItem(_healthCheckRunning ? "Health Check running…" : "Run Health Check") { Enabled = !_healthCheckRunning };
-        check.Click += async (_, _) => await RunHealthCheckAsync();
+        check.Click += async (_, _) => { OpenDashboard(); await RunHealthCheckAsync(openReport: false); };
         menu.Items.Add(check);
         menu.Items.Add("Weekly digest", null, (_, _) => OpenWeeklyDigest());
 
@@ -193,26 +327,32 @@ internal sealed class TrayHost : IDisposable
         menu.Items.Add("Exit", null, (_, _) => { Dispose(); Application.Exit(); });
     }
 
-    private async Task RunHealthCheckAsync()
+    private async Task RunHealthCheckAsync(bool openReport)
     {
+        if (_healthCheckRunning) return;
         _healthCheckRunning = true;
         _tray.Text = "Pitstop: running Health Check…";
+        PushDashboard();
         try
         {
             var report = await Task.Run(() => new HealthCheckRunner(new WindowsSystemProbe()).RunAsync(_config.Privacy.IncludeMachineNameInReports));
             var html = new ReportWriter(_files).Write(report, DataPath("reports"));
-            Log($"Health Check: {report.Overall} ({report.Count(Severity.Action)} action, {report.Count(Severity.Watch)} watch).");
-            Open(html, null);
+            var score = HealthScore.Compute(report.Findings);
+            Log($"Health Check: {report.Overall}, score {score} ({report.Count(Severity.Action)} action, {report.Count(Severity.Watch)} watch).");
+            if (openReport) Open(html, null);
+            _dashboard?.Toast($"Health Check complete: score {score} ({HealthScore.Grade(score)}).");
         }
         catch (Exception ex)
         {
             Log("Health Check failed: " + ex);
             Balloon("Health Check failed", ex.Message, ToolTipIcon.Error);
+            _dashboard?.Toast("Health Check failed: " + ex.Message, "error");
         }
         finally
         {
             _healthCheckRunning = false;
             if (!_disposed) _tray.Text = StatusText();
+            PushDashboard();
         }
     }
 
@@ -246,7 +386,7 @@ internal sealed class TrayHost : IDisposable
     private static void SetAutostart(bool enable)
     {
         using var key = Registry.CurrentUser.CreateSubKey(RunKey);
-        if (enable) key.SetValue("Pitstop", $"\"{Environment.ProcessPath}\"");
+        if (enable) key.SetValue("Pitstop", $"\"{Environment.ProcessPath}\" --tray"); // start quietly, no window
         else key.DeleteValue("Pitstop", throwOnMissingValue: false);
         Log(enable ? "Start with Windows: on." : "Start with Windows: off.");
     }
@@ -310,6 +450,8 @@ internal sealed class TrayHost : IDisposable
     {
         if (_disposed) return;
         _disposed = true;
+        _showListener?.Unregister(null);
+        if (_dashboard is { IsDisposed: false } d) d.Dispose();
         _tick.Stop();
         _reloadDebounce.Stop();
         _configWatcher?.Dispose();

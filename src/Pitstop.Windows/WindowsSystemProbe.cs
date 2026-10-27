@@ -139,20 +139,16 @@ public sealed class WindowsSystemProbe : ISystemProbe
     // H6
     private static async Task ReadMemoryAndCpuAsync(SystemSnapshot s, CancellationToken ct)
     {
-        var mem = new MemoryStatusEx { dwLength = (uint)Marshal.SizeOf<MemoryStatusEx>() };
-        if (GlobalMemoryStatusEx(ref mem))
+        if (NativeSystem.Memory() is { } mem)
         {
-            s.MemoryUsedPercent = mem.dwMemoryLoad;
-            s.TotalMemoryGb = Math.Round(mem.ullTotalPhys / 1073741824.0);
+            s.MemoryUsedPercent = mem.LoadPercent;
+            s.TotalMemoryGb = Math.Round(mem.TotalBytes / 1073741824.0);
         }
 
         // CPU load over a 3-second window from kernel counters: cheaper and steadier than a single sample.
-        if (!GetSystemTimes(out var idle1, out var kernel1, out var user1)) return;
+        if (NativeSystem.CpuTimes() is not { } before) return;
         await Task.Delay(TimeSpan.FromSeconds(3), ct).ConfigureAwait(false);
-        if (!GetSystemTimes(out var idle2, out var kernel2, out var user2)) return;
-        var idle = idle2 - idle1;
-        var total = (kernel2 - kernel1) + (user2 - user1); // kernel time includes idle time
-        if (total > 0) s.CpuPercent = Math.Round(100.0 * (total - idle) / total, 1);
+        if (NativeSystem.CpuTimes() is { } after) s.CpuPercent = NativeSystem.CpuPercent(before, after);
     }
 
     // H7
@@ -324,18 +320,4 @@ public sealed class WindowsSystemProbe : ISystemProbe
         s.TemperatureC = max;
     }
 
-    [StructLayout(LayoutKind.Sequential)]
-    private struct MemoryStatusEx
-    {
-        public uint dwLength, dwMemoryLoad;
-        public ulong ullTotalPhys, ullAvailPhys, ullTotalPageFile, ullAvailPageFile, ullTotalVirtual, ullAvailVirtual, ullAvailExtendedVirtual;
-    }
-
-    [DllImport("kernel32.dll", SetLastError = true)]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool GlobalMemoryStatusEx(ref MemoryStatusEx buffer);
-
-    [DllImport("kernel32.dll", SetLastError = true)]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool GetSystemTimes(out long idle, out long kernel, out long user);
 }

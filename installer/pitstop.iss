@@ -4,7 +4,7 @@
 
 #define AppName "Pitstop"
 #ifndef AppVersion
-  #define AppVersion "1.0.0"
+  #define AppVersion "1.1.0"
 #endif
 #define SourceDir "..\publish\win-x64"
 
@@ -46,7 +46,7 @@ Name: "{autodesktop}\{#AppName}"; Filename: "{app}\Pitstop.exe"; Tasks: desktopi
 
 [Registry]
 ; Same value the app's own "Start with Windows" menu item uses.
-Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: string; ValueName: "Pitstop"; ValueData: """{app}\Pitstop.exe"""; Tasks: autostart
+Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: string; ValueName: "Pitstop"; ValueData: """{app}\Pitstop.exe"" --tray"; Tasks: autostart
 ; Always remove it on uninstall, even if it was turned on later from the tray menu.
 Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: none; ValueName: "Pitstop"; Flags: uninsdeletevalue
 

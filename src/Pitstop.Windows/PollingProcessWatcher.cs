@@ -44,6 +44,13 @@ public sealed class PollingProcessWatcher : IProcessWatcher
         finally { Volatile.Write(ref _polling, 0); }
     }
 
+    /// <summary>Number of running processes (cheap: reads only the PID list).</summary>
+    public static int ProcessCount()
+    {
+        try { return CurrentPids().Length; }
+        catch (InvalidOperationException) { return 0; }
+    }
+
     private static int[] CurrentPids()
     {
         var buffer = new int[1024];

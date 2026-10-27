@@ -39,6 +39,22 @@ public sealed class ReportWriter
         report.Findings,
     }, Json);
 
+    /// <summary>Reads back the findings of a saved JSON report (for the dashboard). Null if unreadable.</summary>
+    public static (DateTimeOffset TakenAt, IReadOnlyList<Finding> Findings)? FromJson(string json)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(json);
+            var root = doc.RootElement;
+            var findings = root.GetProperty("findings").Deserialize<List<Finding>>(Json);
+            return findings is null ? null : (root.GetProperty("takenAt").GetDateTimeOffset(), findings);
+        }
+        catch (Exception ex) when (ex is JsonException or KeyNotFoundException or InvalidOperationException or FormatException)
+        {
+            return null;
+        }
+    }
+
     public static string ToHtml(HealthReport report)
     {
         static string E(string s) => WebUtility.HtmlEncode(s);

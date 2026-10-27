@@ -25,10 +25,10 @@
   - No open bug of severity Medium or higher.
   - Every manual checklist item is Pass or has an accepted reason.
 
-**Current status (2026-10-27):**
-- **Unit tests:** 141 / 141 passing.
-- **Coverage (Pitstop.Core):** 97.3% of lines, 88.4% of branches.
-- **Open bugs:** 0. BUG-001 to BUG-010 are fixed, see [BUGS.md](BUGS.md).
+**Current status (2026-10-27, v1.1):**
+- **Unit tests:** 177 / 177 passing.
+- **Coverage (Pitstop.Core):** 97.0% of lines, 87.7% of branches. The dashboard command parser is 97–100% covered.
+- **Open bugs:** 0. BUG-001 to BUG-015 are fixed, see [BUGS.md](BUGS.md).
 
 ## 4. Test environment
 | | |
@@ -56,6 +56,18 @@
 | L12 | Silent per-user install | No admin prompt; Start menu entry; uninstall entry | ✅ |
 | L13 | Silent uninstall | Program, shortcut and startup entry removed; user data kept | ✅ |
 | L14 | `--diag` support snapshot | All checks pass, nothing changed | ✅ |
+
+### v1.1 dashboard (run 2026-10-27, driven through WebView2's local debugging protocol on a test build)
+| # | Scenario | Expected | Result |
+|---|---|---|---|
+| L15 | Launch from Start menu or exe | Dashboard opens at 1320 × 860, connected to the app (not demo mode), with real data | ✅ Score 82, live CPU/memory, real drives |
+| L16 | Run Health Check from the window | Button shows "Checking…", then the score, "Checked just now" and a toast | ✅ "Health Check complete: score 82 (Good)." |
+| L17 | Turn a profile on and off from the window | Real power plan changes; sidebar and card update | ✅ Balanced, then High performance |
+| L18 | Forged messages from the page (`openUrl` to another site, unknown `runPowerShell`) | Rejected and logged, nothing executed | ✅ Both rejected |
+| L19 | Close the window | All WebView2 processes exit; tray keeps running | ✅ 6 → 0 processes; tray at 20.6 MB private, 0.05% CPU |
+| L20 | Launch Pitstop again while it's running | Second process exits; the existing instance shows its window | ✅ |
+| L21 | Self-contained release build (single-file plus the WebView2 loader) | Dashboard loads with no missing files | ✅ 3 files shipped |
+| L22 | All five pages at window size | No clipped labels, no overlaps, readable units | ✅ After BUG-011 to BUG-015 fixes |
 
 ## 6. Manual QA checklist
 | # | Check | Steps | Expected | Status |
